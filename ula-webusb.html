@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>ULA WebUSB — GBA Memviewer</title>
 <style>
-:root{--bg:#fff;--fg:#1d2327;--mut:#68747d;--card:#f3f5f7;--bd:#d3d9de;--ac:#2f6fed;--ok:#1a7f4b;--er:#c62828}
-@media(prefers-color-scheme:dark){:root{--bg:#14181b;--fg:#e4e8eb;--mut:#8d99a2;--card:#1d2328;--bd:#313a41;--ac:#6b9cff;--ok:#4cc38a;--er:#ff7a7a}}
+:root{--bg:#fff;--fg:#1d2327;--mut:#68747d;--card:#f3f5f7;--bd:#d3d9de;--ac:#2f6fed;--lk:#0b57d0;--ok:#1a7f4b;--er:#c62828}
+@media(prefers-color-scheme:dark){:root{--bg:#14181b;--fg:#e4e8eb;--mut:#8d99a2;--card:#1d2328;--bd:#313a41;--ac:#6b9cff;--lk:#9ec1ff;--ok:#4cc38a;--er:#ff7a7a}}
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--fg);font:14px/1.5 system-ui,"Hiragino Sans","Yu Gothic UI",sans-serif}
 main{max-width:920px;margin:0 auto;padding:16px}
@@ -17,6 +17,14 @@ section{background:var(--card);border:1px solid var(--bd);border-radius:8px;padd
 button,select,input[type=text]{font:inherit;color:var(--fg);background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:6px 10px}
 button{cursor:pointer}button.p{background:var(--ac);border-color:var(--ac);color:#fff}
 button:disabled{opacity:.45;cursor:not-allowed}
+a,a:visited{color:var(--lk);text-decoration:underline}
+#info .grp{font-weight:600;margin:8px 0 4px;font-size:13px}
+#info .cells{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:6px}
+#info .cell{background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:4px 8px;font:12px/1.4 ui-monospace,Consolas,monospace;overflow-wrap:anywhere}
+#info .cell small{display:block;font-family:system-ui,sans-serif}
+#info .cell.w{grid-column:span 2}
+button.link{background:none;border:none;padding:0;color:var(--ok);text-decoration:underline;font-weight:600}
+button.link:disabled{color:var(--mut);text-decoration:none;opacity:1;cursor:default}
 input[type=text]{width:130px;font-family:ui-monospace,Consolas,monospace}
 pre{margin:8px 0 0;padding:10px;background:var(--bg);border:1px solid var(--bd);border-radius:6px;overflow:auto;font:12px/1.45 ui-monospace,Consolas,monospace;white-space:pre}
 #log{height:130px;overflow:auto;font:12px/1.5 ui-monospace,Consolas,monospace;background:var(--bg);border:1px solid var(--bd);border-radius:6px;padding:6px 8px}
@@ -29,7 +37,7 @@ small{color:var(--mut)}
 <main>
 <h1>ULA - USB Linker Advance on WebUSB (experiment)</h1>
 <h2>本ページは実験目的で動作の保証はありません。</h2>
-<p class="sub">2026/11 CaludeCode Sonnet 5.5 ポン出し</p>
+<p class="sub">2026/11 CaludeCode Sonnet 5.5 ポン出し + 修正指示2つ</p>
 <p class="sub">USB Linker Advance (AN2131) — Memory Viewer / Get Cart Info / Dump ROM。プロトコルは <a href="https://github.com/RGBA-CRT/GBA-Memviewer-ULA">GBA-Memviewer-ULA</a> / <a href="https://github.com/RGBA-CRT/ula_driver_libusb">ula_driver_libusb</a> に準拠。Chrome / Edge 専用。</p>
 <div id="nousb" class="er" hidden>このブラウザはWebUSB非対応です。Chrome / Edge で開いてください。</div>
 
@@ -37,11 +45,11 @@ small{color:var(--mut)}
 <h2>接続</h2>
 <div class="row"><span>EZ-USBファーム <small>gba_boot.bix</small></span><input type="file" data-k="boot"><span id="st-boot" class="mut"></span></div>
 <div class="row"><span>GBA側ファーム <small>fwlib20030312.bin</small></span><input type="file" data-k="lib"><span id="st-lib" class="mut"></span></div>
-<div class="row"><button id="bGh">GitHubから2ファイルを取得</button><small>（ブラウザに保存され次回以降は不要）</small></div>
+<div class="row"><button class="link" id="bGh">GitHubから2ファイルを取得</button><small>（ブラウザに保存され次回以降は不要）</small></div>
 <div class="row">
 <button class="act p" id="b1">① EZ-USBファーム転送</button>
 <button class="act p" id="b2">② 接続してGBAを初期化</button>
-<button class="act" id="bBoot" data-need="conn">カートを起動</button>
+<button class="act" id="bBoot" data-need="conn">カートリッジを起動</button>
 <button class="act" id="bClose" data-need="conn">切断</button>
 </div>
 <small>① 未初期化のULA（ファーム未ロード）を選択 → 数秒後に再列挙 → ② でOnline側のデバイスを選択し、GBAを START+SELECT を押しながら電源ON。<br>※ Windowsでは <a href="https://zadig.akeo.ie/">Zadig</a> で両方のデバイスにWinUSBドライバが必要です。</small>
@@ -51,7 +59,35 @@ small{color:var(--mut)}
 <section>
 <h2>Get Cart Info</h2>
 <div class="row"><button class="act p" id="bInfo" data-need="conn">Get Cart Info</button></div>
-<pre id="info">（未取得）</pre>
+<div id="info"><small>（未取得）</small></div>
+</section>
+
+<section>
+<h2>Dump ROM</h2>
+<div class="row">
+<label><input type="radio" name="dm" value="auto" checked> 自動（カートリッジの容量）</label>
+<label><input type="radio" name="dm" value="manual"> 手動</label>
+<input type="text" id="dAddr" value="0x08000000" title="アドレス">
+<input type="text" id="dSize" value="0x100000" title="サイズ (Byte, 0x可)">
+</div>
+<div class="row"><button class="act p" id="bDump" data-need="conn">Dump ROM</button><button id="bCancel" class="cx" disabled>キャンセル</button></div>
+<progress id="pg" value="0" max="1"></progress>
+<small id="pgt">&nbsp;</small>
+</section>
+
+<section>
+<h2>セーブデータ Read / Write</h2>
+<div class="row">
+<button class="act p" id="bSavR" data-need="conn">セーブ読み出し (.sav)</button>
+<span class="mut">|</span>
+<input type="file" id="savF">
+<button class="act" id="bSavW" data-need="conn">セーブ書き込み</button>
+<button id="bCancel2" class="cx" disabled>キャンセル</button>
+</div>
+<div class="row"><label><input type="checkbox" id="savBk" checked> 書き込み前に現在のセーブを自動でバックアップ保存する</label></div>
+<progress id="pg2" value="0" max="1"></progress>
+<small id="pgt2">&nbsp;</small><br>
+<small>対応: SRAM 32K/64K・FLASH 64K/128K・EEPROM 4K/64K（EEPROMはVBA互換のバイト順）。書き込み中はキャンセルできません。</small>
 </section>
 
 <section>
@@ -59,38 +95,26 @@ small{color:var(--mut)}
 <div class="row">
 <select id="region"></select>
 <input type="text" id="addr" value="0x08000000">
-<select id="vsize"><option>256</option><option>512</option><option selected>1024</option><option>2048</option><option>4096</option></select>
+<select id="vsize"><option selected>256</option><option>512</option><option>1024</option><option>2048</option><option>4096</option></select>
 <button class="act p" id="bGo" data-need="conn">Go</button>
 <button class="act" id="bPrev" data-need="conn">◀ 前</button>
 <button class="act" id="bNext" data-need="conn">次 ▶</button>
 </div>
 <pre id="view">（Go で読み出し）</pre>
 </section>
-
-<section>
-<h2>Dump ROM</h2>
-<div class="row">
-<label><input type="radio" name="dm" value="auto" checked> 自動（カートの容量）</label>
-<label><input type="radio" name="dm" value="manual"> 手動</label>
-<input type="text" id="dAddr" value="0x08000000" title="アドレス">
-<input type="text" id="dSize" value="0x100000" title="サイズ (Byte, 0x可)">
-</div>
-<div class="row"><button class="act p" id="bDump" data-need="conn">Dump ROM</button><button id="bCancel" disabled>キャンセル</button></div>
-<progress id="pg" value="0" max="1"></progress>
-<small id="pgt">&nbsp;</small>
-</section>
 </main>
 
 <script>
 'use strict';
 const EP_OUT=4, EP_IN=3, WAIT=512;           // bulk OUT 0x04 / IN 0x83
-const C={INIT:0xFF,DOWNLOAD:0x00,ROM_PROBE:1,READ:6,BOOT_ROM:9,BU_PROBE:0x0C,BLANK:0x20};
+const C={INIT:0xFF,DOWNLOAD:0x00,ROM_PROBE:1,READ:6,WRITE:7,BOOT_ROM:9,SRAM2EWRAM:0x0A,EWRAM2SRAM:0x0B,BU_PROBE:0x0C,SRAM_READ:0x0D,EEP_READ:0x0E,EEP_WRITE:0x0F,SRAM_WRITE:0x10,FLASH_WRITE:0x11,BLANK:0x20};
+const WAIT_BK=1000;
 const GH='https://raw.githubusercontent.com/RGBA-CRT/GBA-Memviewer-ULA/main/';
 const FWN={boot:'gba_boot.bix',lib:'fwlib20030312.bin'};
 const REGIONS=[['BIOS',0],['WRAM',0x02000000],['IRAM',0x03000000],['I/O',0x04000000],['PALT',0x05000000],['VRAM',0x06000000],['OAM',0x07000000],['ROM1',0x08000000],['DSRM',0x09000000],['ROM2',0x0A000000],['ROM3',0x0C000000],['SRAM',0x0E000000]];
 const RAMT=['NONE','SRAM 256Kbit','SRAM 512K','FLASH 512K','EEPROM 4K','EEPROM 64K','FLASH 1M'];
 const ROMT=['EWRAM','MASK ROM','FLASH ROM','FLASH ROM','NDS RAM'];
-const RAMS=[0,0x8000,0x10000,0x10000,0x100,0x2000,0x20000];
+const RAMS=[0,0x8000,0x10000,0x10000,0x200,0x2000,0x20000];
 const MAKER={'01':'Nintendo','08':'Capcom','41':'Ubi Soft','52':'Activision','54':'Konami','69':'Electronic Arts','70':'Infogrames','78':'THQ','8P':'Sega'};
 
 const $=id=>document.getElementById(id);
@@ -106,11 +130,11 @@ const fw={boot:null,lib:null};
 const idb=()=>new Promise((res,rej)=>{const r=indexedDB.open('ula-webusb',1);r.onupgradeneeded=()=>r.result.createObjectStore('fw');r.onsuccess=()=>res(r.result);r.onerror=()=>rej(r.error)});
 async function fwGet(k){try{const db=await idb();return await new Promise(res=>{const q=db.transaction('fw').objectStore('fw').get(k);q.onsuccess=()=>res(q.result?new Uint8Array(q.result):null);q.onerror=()=>res(null)})}catch(e){return null}}
 async function fwSet(k,u){try{const db=await idb();await new Promise((res,rej)=>{const t=db.transaction('fw','readwrite');t.objectStore('fw').put(u.buffer.slice(u.byteOffset,u.byteOffset+u.byteLength),k);t.oncomplete=res;t.onerror=()=>rej(t.error)})}catch(e){}}
-function fwStatus(){for(const k of['boot','lib'])$('st-'+k).textContent=fw[k]?`✔ ${fw[k].length} bytes`:'未設定'}
+function fwStatus(){for(const k of['boot','lib'])$('st-'+k).textContent=fw[k]?`✔ ${fw[k].length} bytes`:'未設定';$('bGh').disabled=!!(fw.boot&&fw.lib)}
 
 /* ---------- UI state ---------- */
-function ui(){document.querySelectorAll('button.act').forEach(b=>b.disabled=busy||(b.dataset.need==='conn'&&!dev));$('bCancel').disabled=!busy||!$('bCancel').dataset.on}
-async function run(fn){if(busy)return;busy=true;cancel=false;ui();try{await fn()}catch(e){log('エラー: '+(e&&e.message||e),'er');console.error(e)}finally{busy=false;$('bCancel').dataset.on='';ui()}}
+function ui(){document.querySelectorAll('button.act').forEach(b=>b.disabled=busy||(b.dataset.need==='conn'&&!dev));document.querySelectorAll('button.cx').forEach(b=>b.disabled=!busy||!b.dataset.on)}
+async function run(fn){if(busy)return;busy=true;cancel=false;ui();try{await fn()}catch(e){log('エラー: '+(e&&e.message||e),'er');console.error(e)}finally{busy=false;document.querySelectorAll('button.cx').forEach(b=>b.dataset.on='');ui()}}
 
 /* ---------- ULA low level ---------- */
 async function cmd(c,p1=0,p2=0,p3=0,wait=WAIT){
@@ -136,13 +160,29 @@ async function readMem(addr,size,prog){
   }
   return out;
 }
+function checkBoot(f){
+  if(!f||!f.length)throw new Error('gba_boot.bix が空です');
+  const head=String.fromCharCode(...f.subarray(0,16)).toLowerCase();
+  if(head.includes('<!doc')||head.includes('<html')||head.startsWith('version https'))throw new Error('gba_boot.bix が正しいバイナリではありません（HTML/LFSポインタ）。ファイルを取得し直してください');
+  if(f.length>0x2000)throw new Error(`gba_boot.bix が大きすぎます (${f.length} bytes)。EZ-USBの内蔵RAM(8KB)を超えるため中止しました`);
+}
 async function ezusbDownload(d,f){
+  checkBoot(f);
   await d.open();
-  const w=async(a,data)=>{const r=await d.controlTransferOut({requestType:'vendor',recipient:'device',request:0xA0,value:a,index:0},data);if(r.status!=='ok')throw new Error('EZ-USB 書込失敗 @'+hex(a,4)+' ('+r.status+')')};
+  const w=async(a,data)=>{
+    const r=await d.controlTransferOut({requestType:'vendor',recipient:'device',request:0xA0,value:a,index:0},data);
+    if(r.status!=='ok')throw new Error('EZ-USB 書込失敗 @'+hex(a,4)+' ('+r.status+')');
+  };
+  log('CPU halt...');
   await w(0x7F92,new Uint8Array([1]));                       // CPUCS: reset+halt
-  for(let o=0;o<f.length;o+=512)await w(o,f.subarray(o,Math.min(o+512,f.length)));
-  try{await w(0x7F92,new Uint8Array([0]))}catch(e){}        // run → 再列挙されるためエラーは無視
-  try{await d.close()}catch(e){}
+  for(let o=0;o<f.length;o+=512){
+    await w(o,f.slice(o,Math.min(o+512,f.length)));          // slice: 独立したバッファを渡す
+    await sleep(5);
+  }
+  log(`ファーム書込完了 (${f.length} bytes)。CPU run...`);
+  // run するとデバイスが再列挙されるため、完了を待たず・close もしない（切断中の操作でChromeが落ちるのを避ける）
+  d.controlTransferOut({requestType:'vendor',recipient:'device',request:0xA0,value:0x7F92,index:0},new Uint8Array([0])).catch(()=>{});
+  await sleep(1500);
 }
 async function gbaFwDownload(f){
   await cmd(C.DOWNLOAD,0x02010000,f.length,0,0);
@@ -168,27 +208,27 @@ async function cartInfo(){
   info.ramType=(await probe(C.BU_PROBE)).getUint32(0,true);
   info.unused=(await probe(C.BLANK)).getUint32(0,true);
   lastInfo=info;lastTitle=hdr.title;
-  const L=(a,i)=>a[i]??'UNKNOWN';
-  $('info').textContent=
-`GBA cartridge info {
-	ROM TYPE : ${L(ROMT,info.romType)}
-	ROM SIZE : ${info.romSize/1048576*8}MBit [${info.romSize} Byte]
-	RAM TYPE : ${L(RAMT,info.ramType)}
-	RAM SIZE : ${RAMS[info.ramType]??0}Byte
-	FREE SIZE: ${info.unused}
-}
-Game Info {
-	ProgramStartCode : 0x${hdr.entry.toString(16).toUpperCase()}
-	Logo : ${hdr.logo.map(x=>hex(x,2)).join(' ')} ...
-	GameTitle : ${hdr.title}
-	GameCode : ${hdr.code}
-	MakerCode : ${hdr.maker}  (${MAKER[hdr.maker]||'Unknown'})
-	UnitCode : ${hdr.unit} -> ${hdr.unit===0?'GameBoyAdvance':'Unknown'}
-	DeviceCode: ${hex(hdr.dev,2)}
-	ROM Version : ${hdr.ver>>4}.${hdr.ver&15}
-	CheckSum : ${hex(hdr.sum,2)}
-}`;
-  log('カート情報を取得しました','ok');
+  const L=(t,i)=>t[i]??'UNKNOWN';
+  const el=$('info');el.replaceChildren();
+  const grp=t=>{const h=document.createElement('div');h.className='grp';h.textContent=t;const g=document.createElement('div');g.className='cells';el.append(h,g);return g};
+  const cell=(g,l,v,w)=>{const d=document.createElement('div');d.className='cell'+(w?' w':'');const sm=document.createElement('small');sm.textContent=l;const b=document.createElement('div');b.textContent=v;d.append(sm,b);g.appendChild(d)};
+  let g=grp('Cart');
+  cell(g,'ROM TYPE',L(ROMT,info.romType));
+  cell(g,'ROM SIZE',`${info.romSize/1048576*8} Mbit (${info.romSize} B)`);
+  cell(g,'RAM TYPE',L(RAMT,info.ramType));
+  cell(g,'RAM SIZE',`${RAMS[info.ramType]??0} B`);
+  cell(g,'FREE SIZE',`${info.unused} B`);
+  g=grp('Game');
+  cell(g,'Title',hdr.title||'-');
+  cell(g,'Game Code',hdr.code);
+  cell(g,'Maker',`${hdr.maker} (${MAKER[hdr.maker]||'Unknown'})`);
+  cell(g,'Unit Code',`${hdr.unit} → ${hdr.unit===0?'GBA':'Unknown'}`);
+  cell(g,'Device Code',hex(hdr.dev,2));
+  cell(g,'ROM Version',`${hdr.ver>>4}.${hdr.ver&15}`);
+  cell(g,'CheckSum',hex(hdr.sum,2));
+  cell(g,'Start Code','0x'+hdr.entry.toString(16).toUpperCase());
+  cell(g,'Logo',hdr.logo.map(x=>hex(x,2)).join(' ')+' ...',true);
+  log('カートリッジ情報を取得しました','ok');
   return info;
 }
 
@@ -231,6 +271,53 @@ async function dump(){
   log(`ダンプ完了 → ${name}`,'ok');
 }
 
+/* ---------- Save data (SRAM / FLASH / EEPROM) ---------- */
+function vbaSwap(u){for(let i=0;i+7<u.length;i+=8)for(let j=0;j<4;j++){const t=u[i+j];u[i+j]=u[i+7-j];u[i+7-j]=t}}
+function prog2(o,n){$('pg2').max=n;$('pg2').value=o;$('pgt2').textContent=`${o}/${n} Byte (${(o/n*100).toFixed(1)}%)`}
+function saveFile(u,name){const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([u]));a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),1e4)}
+async function saveRead(prog){
+  const t=lastInfo.ramType,size=RAMS[t],out=new Uint8Array(size);let done=0;
+  const chunks=async(off,n)=>{for(let o=0;o<n;){
+    if(cancel)throw new Error('キャンセルしました');
+    const c=Math.min(1024,n-o);out.set(await bulkIn(c),off+o);o+=c;done+=c;prog(done,size)}};
+  switch(t){
+    case 1:await cmd(C.SRAM_READ,0,0x8000,0);await sleep(WAIT_BK);await chunks(0,0x8000);break;
+    case 2:
+      await cmd(C.SRAM_READ,0,0x8000,0);await sleep(WAIT_BK);await chunks(0,0x8000);
+      await cmd(C.SRAM2EWRAM,1,0,0);await sleep(WAIT_BK);await cmd(C.READ,0x02018000,0x8000,0);await chunks(0x8000,0x8000);break;
+    case 3:case 6:
+      for(let k=0;k<size/0x8000;k++){await cmd(C.SRAM_READ,k*0x8000,0x8000,0);await sleep(WAIT_BK);await chunks(k*0x8000,0x8000)}break;
+    case 4:case 5:
+      await cmd(C.EEP_READ,0,size,0);await sleep(WAIT_BK);await chunks(0,size);vbaSwap(out);break;
+    default:throw new Error('バックアップメモリがありません');
+  }
+  return out;
+}
+async function saveWrite(data,prog){
+  const t=lastInfo.ramType,size=RAMS[t];let done=0;
+  const send=async(off,n)=>{for(let o=0;o<n;){
+    const c=Math.min(1024,n-o);const b=data.slice(off+o,off+o+c);
+    if(t===4||t===5)vbaSwap(b);
+    const r=await dev.transferOut(EP_OUT,b);if(r.status!=='ok')throw new Error('セーブ書込失敗 ('+r.status+')');
+    o+=c;done+=c;prog(done,size)}};
+  switch(t){
+    case 1:await cmd(C.SRAM_WRITE,0,size,0);await send(0,size);await cmd(C.EWRAM2SRAM,0,0,0);break;
+    case 2:
+      await cmd(C.SRAM_WRITE,0,0x8000,0);await send(0,0x8000);
+      await cmd(C.SRAM2EWRAM,1,0,0);await sleep(WAIT_BK);await cmd(C.WRITE,0x02018000,0x8000,0);await send(0x8000,0x8000);
+      await cmd(C.EWRAM2SRAM,2,0,0);break;
+    case 3:case 6:await cmd(C.FLASH_WRITE,0,size,0);await send(0,size);break;
+    case 4:case 5:await cmd(C.EEP_WRITE,0,size,0);await send(0,size);break;
+    default:throw new Error('バックアップメモリがありません');
+  }
+  await sleep(WAIT_BK);
+}
+async function needRam(){
+  const info=lastInfo||await cartInfo();
+  if(!info.ramType)throw new Error('バックアップメモリが検出されませんでした');
+  return info;
+}
+
 /* ---------- wiring ---------- */
 if(!navigator.usb){$('nousb').hidden=false;document.querySelectorAll('button').forEach(b=>b.disabled=true)}
 
@@ -245,8 +332,11 @@ $('bGh').onclick=async()=>{
 
 $('b1').onclick=()=>run(async()=>{
   if(!fw.boot)throw new Error('gba_boot.bix が未設定です');
+  checkBoot(fw.boot);
   const d=await navigator.usb.requestDevice({filters:[]});
-  log(`選択: ${d.productName||'?'} [${hex(d.vendorId,4)}:${hex(d.productId,4)}]`);
+  const id=`${d.productName||'?'} [${hex(d.vendorId,4)}:${hex(d.productId,4)}]`;
+  log('選択: '+id);
+  if(!confirm(`このデバイスにEZ-USBファームを書き込みます。\n${id}\n\nULA（AN2131）以外なら「キャンセル」してください。`))return;
   await ezusbDownload(d,fw.boot);
   log('EZ-USBファームを転送しました。再列挙後に ② へ進んでください','ok');
 });
@@ -272,11 +362,36 @@ $('bPrev').onclick=()=>run(()=>view(-1));
 $('bNext').onclick=()=>run(()=>view(1));
 $('addr').onkeydown=e=>{if(e.key==='Enter'&&!busy&&dev)$('bGo').click()};
 $('region').onchange=()=>{$('addr').value='0x'+hex(+$('region').value)};
+$('bSavR').onclick=()=>run(async()=>{
+  const info=await needRam();
+  $('bCancel2').dataset.on='1';ui();
+  log(`セーブ読み出し: ${RAMT[info.ramType]} (${RAMS[info.ramType]} Byte)`);
+  const d=await saveRead(prog2);
+  const name=(lastTitle||'save').replace(/[^\w.-]+/g,'_')+'.sav';
+  saveFile(d,name);log('セーブ読み出し完了 → '+name,'ok');
+});
+$('bSavW').onclick=()=>run(async()=>{
+  const f=$('savF').files[0];if(!f)throw new Error('書き込む .sav ファイルを選択してください');
+  const info=await needRam(),t=info.ramType,size=RAMS[t];
+  const data=new Uint8Array(await f.arrayBuffer());
+  if(data.length<size)throw new Error(`ファイルが小さすぎます (${data.length} < ${size} Byte / ${RAMT[t]})`);
+  if(data.length>size)log(`ファイルが ${data.length} Byte あるため先頭 ${size} Byte のみ書き込みます`);
+  if(!confirm(`${RAMT[t]} (${size} Byte) にセーブデータを書き込みます。\n既存のセーブは上書きされます。続行しますか？`))return;
+  const base=(lastTitle||'save').replace(/[^\w.-]+/g,'_');
+  if($('savBk').checked){
+    $('bCancel2').dataset.on='1';ui();log('バックアップ読み出し中...');
+    const bk=await saveRead(prog2);saveFile(bk,base+'_backup.sav');log('バックアップを保存しました','ok');
+    $('bCancel2').dataset.on='';ui();
+  }
+  log('セーブ書き込み中（中断しないでください）...');
+  await saveWrite(data.subarray(0,size),prog2);
+  log('セーブ書き込み完了。GBAの電源を入れ直して確認してください','ok');
+});
 $('bDump').onclick=()=>run(dump);
-$('bCancel').onclick=()=>{cancel=true;log('キャンセル要求...')};
+document.querySelectorAll('button.cx').forEach(b=>b.onclick=()=>{cancel=true;log('キャンセル要求...')});
 $('bBoot').onclick=()=>run(async()=>{
   if(!confirm('ゲームを起動すると通信が切断されます。よろしいですか？'))return;
-  await cmd(C.BOOT_ROM);await closeDev();log('カートを起動しました。切断しました','ok');
+  await cmd(C.BOOT_ROM);await closeDev();log('カートリッジを起動しました。切断しました','ok');
 });
 $('bClose').onclick=()=>run(async()=>{await closeDev();log('切断しました')});
 
